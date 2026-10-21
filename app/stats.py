@@ -7,7 +7,7 @@ import math, threading
 from concurrent.futures import ThreadPoolExecutor
 import ee
 from shapely.geometry import shape, box
-from . import dataset as D
+from . import aoi as A, dataset as D
 from . import npmath as M
 from .cache import digest, disk_get, disk_set
 from .config import YEARS
@@ -37,15 +37,13 @@ def _cells(aoi):
         return [aoi.ee()]
     minx, miny, maxx, maxy = aoi.bbox
     k = math.ceil(math.sqrt(n))
-    g = shape(aoi.geometry)
-    out = []
-    for i in range(k):
-        for j in range(k):
-            c = (minx + (maxx - minx) * i / k, miny + (maxy - miny) * j / k,
-                 minx + (maxx - minx) * (i + 1) / k, miny + (maxy - miny) * (j + 1) / k)
-            if g.intersects(box(*c)):
-                out.append(aoi.ee().intersection(ee.Geometry.Rectangle(list(c), "EPSG:4326", False), ee.ErrorMargin(1)))
-    return out
+    with A.GEOS_LOCK:
+        g = shape(aoi.geometry)
+        boxes = [(minx + (maxx - minx) * i / k, miny + (maxy - miny) * j / k,
+                  minx + (maxx - minx) * (i + 1) / k, miny + (maxy - miny) * (j + 1) / k)
+                 for i in range(k) for j in range(k)]
+        hit = [c for c in boxes if g.intersects(box(*c))]
+    return [aoi.ee().intersection(ee.Geometry.Rectangle(list(c), "EPSG:4326", False), ee.ErrorMargin(1)) for c in hit]
 
 
 def _reduce(img, aoi, grid_, reducer=None, grouped=False):

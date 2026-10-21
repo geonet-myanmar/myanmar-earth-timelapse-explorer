@@ -16,6 +16,9 @@ from .config import MIMU, AOI_MAX_KM2, AOI_WARN_KM2, AOI_MAX_VERTICES
 GEOD = Geod(ellps="WGS84")
 LEVELS = {1: "State/Region", 2: "District", 3: "Township"}
 _admin, _mm, _lock = {}, {}, threading.Lock()
+# GEOS prepared geometries (the shared Myanmar outline) are not thread-safe: 16 threads validating at once segfault.
+# Requests run in a threadpool (and share one Vercel instance), so all GEOS / pyproj work goes through this lock.
+GEOS_LOCK = threading.Lock()
 _resolved = TTL(3600, 256)
 
 
@@ -88,12 +91,18 @@ def resolve(spec):
         f = _admin.get(spec.get("pcode", ""))
         if not f or f["properties"]["level"] == 0:
             raise ValueError(f"Unknown MIMU PCode {spec.get('pcode')!r}.")
+        key = f"adm:{f['properties']['pcode']}"
+        hit = _resolved.get(key)
+        if hit:
+            return hit
         p = f["properties"]
-        g = shape(f["geometry"])
+        with GEOS_LOCK:
+            g = shape(f["geometry"])
+            bbox, nv = [round(v, 6) for v in g.bounds], _count_vertices(g)
         parent = p.get("dt") or p.get("st") or ""
-        return AOI(key=f"adm:{p['pcode']}", kind="admin", geometry=f["geometry"], area_km2=p["area_km2"],
-                   bbox=[round(v, 6) for v in g.bounds], name=f"{p['name_en']} {LEVELS[p['level']]}" + (f", {parent}" if parent else ""),
-                   name_my=p.get("name_my", ""), pcode=p["pcode"], level=p["level"], vertices=_count_vertices(g))
+        return _resolved.set(key, AOI(key=key, kind="admin", geometry=f["geometry"], area_km2=p["area_km2"], bbox=bbox,
+                                      name=f"{p['name_en']} {LEVELS[p['level']]}" + (f", {parent}" if parent else ""),
+                                      name_my=p.get("name_my", ""), pcode=p["pcode"], level=p["level"], vertices=nv))
     if kind != "geojson":
         raise ValueError("Area of interest must be an admin unit or a GeoJSON polygon.")
 
@@ -101,6 +110,11 @@ def resolve(spec):
     hit = _resolved.get(raw_key)
     if hit:
         return AOI(**{**asdict(hit), "name": spec.get("name") or hit.name})
+    with GEOS_LOCK:
+        return _resolved.set(raw_key, _validate(spec))
+
+
+def _validate(spec):
     try:
         g = shape(spec["geometry"])
     except Exception as e:
@@ -129,7 +143,6 @@ def resolve(spec):
     if a > AOI_WARN_KM2:
         warnings.append(f"Large area ({a:,.0f} km²): native-resolution statistics can take several minutes.")
     geom = mapping(g)
-    aoi = AOI(key="geo:" + digest("geom", geom)[:16], kind="geojson", name=spec.get("name") or "Custom area",
-              geometry=json.loads(json.dumps(geom)), area_km2=round(a, 3), bbox=[round(v, 6) for v in g.bounds],
-              inside_pct=round(inside, 2), vertices=nv, warnings=warnings)
-    return _resolved.set(raw_key, aoi)
+    return AOI(key="geo:" + digest("geom", geom)[:16], kind="geojson", name=spec.get("name") or "Custom area",
+               geometry=json.loads(json.dumps(geom)), area_km2=round(a, 3), bbox=[round(v, 6) for v in g.bounds],
+               inside_pct=round(inside, 2), vertices=nv, warnings=warnings)

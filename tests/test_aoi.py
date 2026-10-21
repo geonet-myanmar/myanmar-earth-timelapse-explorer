@@ -59,6 +59,36 @@ def test_bowtie_is_repaired():
     assert a.area_km2 > 100 and a.geometry["type"] in ("Polygon", "MultiPolygon")
 
 
+RACE = r"""
+import random, sys
+from concurrent.futures import ThreadPoolExecutor
+from shapely.prepared import prep
+sys.path.insert(0, sys.argv[1])
+from app import aoi as A
+A._load()
+def one(i):
+    r = random.Random(i); x, y = 95 + r.random() * 3, 18 + r.random() * 5
+    try:
+        A.resolve({"kind": "geojson", "geometry": {"type": "Polygon",
+                   "coordinates": [[[x, y], [x + .3, y], [x + .3, y + .3], [x, y + .3], [x, y]]]}})
+    except ValueError:
+        pass
+for k in range(12):
+    A._mm["prep"] = prep(A._mm["geom"]); A._resolved._d.clear()   # fresh, unbuilt GEOS index every round
+    with ThreadPoolExecutor(16) as ex:
+        list(ex.map(one, range(k * 64, k * 64 + 64)))
+"""
+
+
+def test_concurrent_validation_does_not_crash(tmp_path):
+    """Regression: GEOS prepared geometries are not thread-safe; parallel requests segfaulted the server."""
+    import subprocess, sys
+    from conftest import ROOT
+    f = tmp_path / "race.py"
+    f.write_text(RACE)
+    assert subprocess.run([sys.executable, str(f), str(ROOT)], timeout=300).returncode == 0
+
+
 def test_too_large_rejected():
     with pytest.raises(ValueError, match="limit"):
         A.resolve({"kind": "geojson", "geometry": box(92.5, 10.0, 101.0, 28.0)})

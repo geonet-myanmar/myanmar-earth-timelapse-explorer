@@ -1,0 +1,18 @@
+[
+  {"id": "hpakant", "name": "Hpakant jade mines", "region": "Kachin State", "bbox": [96.18, 25.53, 96.42, 25.72], "years": [1990, 2022],
+   "blurb": "Jade mining has turned forested hills around Hpakant into open pits and spoil heaps."},
+  {"id": "naypyitaw", "name": "Naypyitaw", "region": "Nay Pyi Taw Union Territory", "bbox": [96.02, 19.66, 96.24, 19.88], "years": [2000, 2012],
+   "blurb": "A capital built on farmland and scrub from 2002: ministries, avenues and new reservoirs."},
+  {"id": "yangon", "name": "Yangon's growth", "region": "Yangon Region", "bbox": [95.98, 16.62, 96.32, 17.02], "years": [1990, 2022],
+   "blurb": "Hlaing Tharyar, Dagon Myothit and Thilawa spread over paddy land around the old city."},
+  {"id": "monywa", "name": "Monywa copper mines", "region": "Sagaing Region", "bbox": [94.98, 22.02, 95.12, 22.17], "years": [1995, 2022],
+   "blurb": "Sabetaung–Kyisintaung and, from 2012, Letpadaung: open pits and leach pads west of the Chindwin."},
+  {"id": "inle", "name": "Inle Lake", "region": "Shan State (South)", "bbox": [96.84, 20.42, 96.98, 20.70], "years": [1990, 2022],
+   "blurb": "Floating gardens and silt have narrowed the open water, most in the north and west."},
+  {"id": "yeywa", "name": "Yeywa reservoir", "region": "Mandalay Region", "bbox": [96.36, 21.60, 96.66, 21.90], "years": [2005, 2015],
+   "blurb": "The Myitnge valley floods behind the Yeywa dam, completed in 2010."},
+  {"id": "bogale", "name": "Delta mangroves", "region": "Ayeyarwady Region", "bbox": [95.10, 15.75, 95.45, 16.05], "years": [1988, 2022],
+   "blurb": "Mangroves cleared for paddy and ponds around Bogale; Meinmahla Kyun stays forested."},
+  {"id": "kyaukphyu", "name": "Kyaukphyu", "region": "Rakhine State", "bbox": [93.50, 19.33, 93.73, 19.49], "years": [2005, 2022],
+   "blurb": "Town growth and the oil and gas terminal on Madae Island (white patch, south-east)."}
+]

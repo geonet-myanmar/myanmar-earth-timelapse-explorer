@@ -1,0 +1,23 @@
+# Regenerable caches and logs
+cache/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.log
+
+# Raw downloads (scripts/01 re-fetches them); data/mimu and web/data are the built products and stay
+data/raw/
+
+# Never commit credentials
+*.key.json
+*service-account*.json
+.env
+.env.*
+.claude/
+_prev_*/
+
+# Vercel CLI link (per machine)
+.vercel/
+
+.vercel
+.env*

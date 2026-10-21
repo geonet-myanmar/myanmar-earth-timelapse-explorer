@@ -1,0 +1,16 @@
+[project]
+name = "myanmar-earth-timelapse-explorer"
+version = "1.0.0"
+description = "Analyse, visualise and make timelapse videos of Earth Timelapse v0 (1984-2022) for any area in Myanmar"
+requires-python = ">=3.12"
+dependencies = [
+    "earthengine-api==1.7.1",
+    "fastapi==0.136.1",
+    "uvicorn==0.35.0",
+    "shapely==2.1.1",
+    "pyproj>=3.7",
+]
+
+# Vercel loads the FastAPI instance from app/main.py as a module, so the package-relative imports work.
+[tool.vercel]
+entrypoint = "app.main:app"

@@ -1,0 +1,14 @@
+# Upload only what the API needs: app/, data/mimu, data/calibration.json, the dependency files and vercel.json.
+web/
+tests/
+scripts/
+data/raw/
+cache/
+.github/
+.pytest_cache/
+**/__pycache__/
+*.md
+*.log
+.env*
+*.key.json
+*service-account*.json

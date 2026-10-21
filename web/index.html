@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Myanmar Earth Timelapse</title>
+<meta name="description" content="Analyse, visualise and make timelapse videos of Google Earth Timelapse annual mosaics (1984–2022) for any area in Myanmar.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232a78d6'/%3E%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='white' stroke-width='2.5'/%3E%3Cpath d='M16 10v6l4 3' stroke='white' stroke-width='2.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+Myanmar:wght@400;500&display=swap">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="vendor/leaflet-geoman-free/leaflet-geoman.css">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <div class="brand">
+      <div class="eyebrow">Earth Timelapse v0 · 1984–2022 · Myanmar</div>
+      <h1>Myanmar Earth Timelapse Explorer</h1>
+    </div>
+    <button class="aoichip" id="aoichip" type="button" title="Area of interest" hidden></button>
+    <div class="spacer"></div>
+    <button class="iconbtn" id="themebtn" type="button" aria-label="Switch colour theme" title="Theme: follow system"></button>
+  </header>
+
+  <main class="work">
+    <section class="mapwrap" aria-label="Map">
+      <div id="map"></div>
+      <div class="yearbadge" id="yearbadge" aria-live="polite"></div>
+      <div class="swipe" id="swipe" hidden><div class="swipe-handle" tabindex="0" role="slider" aria-label="Swipe divider" aria-valuemin="0" aria-valuemax="100"></div></div>
+      <div class="swipe-labels" id="swipelabels" hidden><span id="swipeL"></span><span id="swipeR"></span></div>
+      <details class="layers" id="layers" open>
+        <summary>Layers</summary>
+        <label class="row">Basemap
+          <select id="basemap">
+            <option value="none">None</option>
+            <option value="imagery">Esri imagery (today)</option>
+            <option value="light">Esri light grey</option>
+            <option value="dark">Esri dark grey</option>
+          </select>
+        </label>
+        <label class="chk"><input type="checkbox" id="ly-timelapse" checked> Timelapse imagery</label>
+        <label class="chk"><input type="checkbox" id="ly-labels" checked> Place labels</label>
+        <label class="chk"><input type="checkbox" id="ly-admin"> MIMU boundaries</label>
+        <label class="chk"><input type="checkbox" id="ly-dim" checked> Dim outside area</label>
+        <label class="chk"><input type="checkbox" id="ly-grey" checked> Grey imagery under analysis</label>
+      </details>
+      <div class="legend" id="legend" hidden></div>
+      <div class="timebar" id="timebar">
+        <button class="iconbtn play" id="playbtn" type="button" aria-label="Play timelapse"></button>
+        <input type="range" id="yearslider" min="1984" max="2022" step="1" value="2022" aria-label="Year">
+        <output id="yearout" for="yearslider">2022</output>
+      </div>
+      <div class="maptoast" id="maptoast" hidden></div>
+    </section>
+
+    <aside class="panel">
+      <div class="tabs" role="tablist" id="tabs">
+        <button role="tab" data-tab="area" aria-selected="true">Area</button>
+        <button role="tab" data-tab="explore" aria-selected="false">Explore</button>
+        <button role="tab" data-tab="analyze" aria-selected="false">Analyze</button>
+        <button role="tab" data-tab="timelapse" aria-selected="false">Timelapse</button>
+        <button role="tab" data-tab="about" aria-selected="false">About</button>
+      </div>
+      <div class="tabbody">
+
+        <!-- AREA -->
+        <section class="tab" id="tab-area" role="tabpanel">
+          <div class="card aoicard" id="aoicard" hidden></div>
+          <div class="seg" role="radiogroup" aria-label="How to choose the area" id="aoimode">
+            <button type="button" data-mode="admin" aria-pressed="true">Admin unit</button>
+            <button type="button" data-mode="draw" aria-pressed="false">Draw</button>
+            <button type="button" data-mode="upload" aria-pressed="false">Upload</button>
+            <button type="button" data-mode="presets" aria-pressed="false">Places</button>
+          </div>
+
+          <div class="mode" id="mode-admin">
+            <p class="hint">Pick a State/Region, District or Township (MIMU PCode v9.4). Search accepts English or Myanmar names.</p>
+            <label class="field">Search
+              <input type="search" id="adminsearch" placeholder="e.g. Hpakant, ဖားကန့်, Taunggyi" autocomplete="off">
+            </label>
+            <ul class="results" id="adminresults" hidden></ul>
+            <label class="field">State / Region<select id="sel-st"></select></label>
+            <label class="field">District<select id="sel-dt" disabled></select></label>
+            <label class="field">Township<select id="sel-ts" disabled></select></label>
+            <div class="btnrow">
+              <button class="btn primary" type="button" id="adminuse" disabled>Use this area</button>
+              <label class="chk"><input type="checkbox" id="adminpick"> Pick on map</label>
+            </div>
+          </div>
+
+          <div class="mode" id="mode-draw" hidden>
+            <p class="hint">Draw on the map. Rectangles follow the map's grid; polygons close on the first point (or double-click).</p>
+            <div class="btnrow">
+              <button class="btn" type="button" data-draw="Rectangle">Rectangle</button>
+              <button class="btn" type="button" data-draw="Polygon">Polygon</button>
+              <button class="btn" type="button" data-draw="Circle">Circle</button>
+            </div>
+            <div class="btnrow">
+              <button class="btn" type="button" id="drawedit" disabled>Edit shape</button>
+              <button class="btn" type="button" id="drawcancel" hidden>Cancel drawing</button>
+            </div>
+          </div>
+
+          <div class="mode" id="mode-upload" hidden>
+            <label class="drop" id="drop">
+              <input type="file" id="fileinput" multiple accept=".geojson,.json,.kml,.kmz,.zip,.shp,.shx,.dbf,.prj,.cpg,.gpx">
+              <b>Drop a file here</b> or click to browse
+              <span class="note">GeoJSON · KML · KMZ · zipped Shapefile · .shp + .dbf + .prj set · GPX. Files are read in your browser.</span>
+            </label>
+            <div id="uploadstep"></div>
+          </div>
+
+          <div class="mode" id="mode-presets" hidden>
+            <p class="hint">Places where four decades of change are easy to see. Each opens with suggested years.</p>
+            <div class="presets" id="presets"></div>
+          </div>
+        </section>
+
+        <!-- EXPLORE -->
+        <section class="tab" id="tab-explore" role="tabpanel" hidden>
+          <div class="group">
+            <h3>Year</h3>
+            <div class="yearline"><span class="bigyear" id="ex-year">2022</span><span id="ex-era" class="note"></span></div>
+            <div class="btnrow">
+              <label class="field inline">Speed
+                <select id="speed">
+                  <option value="2000">0.5 year/s</option>
+                  <option value="1000" selected>1 year/s</option>
+                  <option value="500">2 years/s</option>
+                  <option value="300">3 years/s</option>
+                </select>
+              </label>
+              <label class="chk"><input type="checkbox" id="loop" checked> Loop</label>
+            </div>
+            <p class="note" id="ex-qa"></p>
+          </div>
+          <div class="group">
+            <h3>Compare two years</h3>
+            <div class="seg" role="radiogroup" aria-label="Compare mode" id="cmpmode">
+              <button type="button" data-cmp="off" aria-pressed="true">Off</button>
+              <button type="button" data-cmp="swipe" aria-pressed="false">Swipe</button>
+              <button type="button" data-cmp="flicker" aria-pressed="false">Flicker</button>
+            </div>
+            <label class="field">Compare against (left side / alternate)
+              <select id="cmpyear"></select>
+            </label>
+            <p class="note">The slider year is on the right of the swipe line.</p>
+          </div>
+          <div class="group">
+            <h3>Display enhancement</h3>
+            <label class="field slider">Brightness <input type="range" id="f-bright" min="50" max="180" value="100"><output id="o-bright">100%</output></label>
+            <label class="field slider">Contrast <input type="range" id="f-contrast" min="50" max="200" value="100"><output id="o-contrast">100%</output></label>
+            <label class="field slider">Saturation <input type="range" id="f-sat" min="0" max="250" value="100"><output id="o-sat">100%</output></label>
+            <div class="btnrow"><button class="btn" type="button" id="f-reset">Reset</button></div>
+            <p class="note">Display only: statistics and GeoTIFF downloads always use the original pixel values.</p>
+          </div>
+        </section>
+
+        <!-- ANALYZE -->
+        <section class="tab" id="tab-analyze" role="tabpanel" hidden>
+          <p class="needaoi" data-needaoi>Choose an area first (Area tab).</p>
+          <div data-hasaoi hidden>
+            <div class="callout">Indices come from an 8-bit <i>visual</i> product, so they are <b>indicative</b>: good for where and when things changed, not for physical values.</div>
+            <div class="group">
+              <h3>39-year profile of the area</h3>
+              <div class="progress" id="ts-progress" hidden><span></span></div>
+              <div class="chart" id="ch-gli"></div>
+              <div class="chart" id="ch-cover"></div>
+              <div class="chart" id="ch-de"></div>
+              <div class="chart" id="ch-qa"></div>
+              <div class="chart" id="ch-strip"></div>
+              <div class="btnrow">
+                <button class="btn" type="button" id="ts-csv" disabled>Download CSV</button>
+                <button class="btn" type="button" id="ts-json" disabled>Download JSON</button>
+                <button class="btn" type="button" id="ts-table" disabled>Show table</button>
+              </div>
+              <div class="tscroll" id="ts-tablewrap" hidden></div>
+            </div>
+
+            <div class="group">
+              <h3>Map an analysis layer</h3>
+              <div class="seg wrap" role="radiogroup" aria-label="Analysis layer" id="anmode">
+                <button type="button" data-an="none" aria-pressed="true">None</button>
+                <button type="button" data-an="change" aria-pressed="false">Change A→B</button>
+                <button type="button" data-an="yoc" aria-pressed="false">Year of change</button>
+                <button type="button" data-an="trend" aria-pressed="false">Trend</button>
+                <button type="button" data-an="qa" aria-pressed="false">Gap-fill QA</button>
+              </div>
+
+              <div class="an" id="an-change" hidden>
+                <div class="two">
+                  <label class="field">Year A<select id="ch-a"></select></label>
+                  <label class="field">Year B<select id="ch-b"></select></label>
+                </div>
+                <label class="field">Compare
+                  <select id="ch-window">
+                    <option value="3">3-year means around each year (less noise)</option>
+                    <option value="1">Single years</option>
+                  </select>
+                </label>
+                <label class="field">Show
+                  <select id="ch-metric">
+                    <option value="classes">Change classes</option>
+                    <option value="dgli">Greenness change (ΔGLI)</option>
+                    <option value="dbright">Brightness change</option>
+                    <option value="de">Colour change (ΔE)</option>
+                  </select>
+                </label>
+                <div id="ch-stats"></div>
+              </div>
+
+              <div class="an" id="an-yoc" hidden>
+                <div class="two">
+                  <label class="field">From<select id="yoc-s"></select></label>
+                  <label class="field">To<select id="yoc-e"></select></label>
+                </div>
+                <label class="field">Change measure
+                  <select id="yoc-m">
+                    <option value="gli">Largest greenness drop</option>
+                    <option value="de">Largest colour change</option>
+                  </select>
+                </label>
+                <div class="chart" id="ch-yoc"></div>
+              </div>
+
+              <div class="an" id="an-trend" hidden>
+                <div class="two">
+                  <label class="field">From<select id="tr-s"></select></label>
+                  <label class="field">To<select id="tr-e"></select></label>
+                </div>
+                <label class="field">Significance
+                  <select id="tr-alpha">
+                    <option value="0.05">p &lt; 0.05 (Mann–Kendall)</option>
+                    <option value="0.01">p &lt; 0.01</option>
+                    <option value="1">No significance filter</option>
+                  </select>
+                </label>
+                <div id="tr-stats"></div>
+              </div>
+
+              <div class="an" id="an-qa" hidden>
+                <label class="field">Show
+                  <select id="qa-mode"></select>
+                </label>
+                <p class="note">A year is flagged when it sits on a straight line with its neighbours in all three bands (within 2 DN): the signature of the dataset's linear gap-filling.</p>
+              </div>
+
+              <div class="btnrow" id="an-actions" hidden>
+                <button class="btn" type="button" id="an-tif">Download GeoTIFF</button>
+                <button class="btn" type="button" id="an-png">Save map image</button>
+              </div>
+            </div>
+
+            <div class="group">
+              <h3>Pixel inspector</h3>
+              <label class="chk"><input type="checkbox" id="inspect"> Click the map to see one pixel's 39 years</label>
+              <div class="chart" id="ch-pixel"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- TIMELAPSE -->
+        <section class="tab" id="tab-timelapse" role="tabpanel" hidden>
+          <p class="needaoi" data-needaoi>Choose an area first (Area tab).</p>
+          <div data-hasaoi hidden>
+            <div class="group">
+              <h3>Frames</h3>
+              <div class="two">
+                <label class="field">From<select id="v-from"></select></label>
+                <label class="field">To<select id="v-to"></select></label>
+              </div>
+              <div class="two">
+                <label class="field">Every
+                  <select id="v-step"><option value="1">year</option><option value="2">2 years</option><option value="3">3 years</option></select>
+                </label>
+                <label class="field">Speed
+                  <select id="v-fps"><option value="1">1 year/s</option><option value="2" selected>2 years/s</option><option value="3">3 years/s</option><option value="4">4 years/s</option><option value="6">6 years/s</option></select>
+                </label>
+              </div>
+              <div class="two">
+                <label class="field">Size
+                  <select id="v-preset">
+                    <option value="native">Native pixels (≤ 4K)</option>
+                    <option value="4k">4K (3840 px)</option>
+                    <option value="1440p">1440p (2560 px)</option>
+                    <option value="1080p">1080p (1920 px)</option>
+                    <option value="720p">720p (1280 px)</option>
+                    <option value="480p">480p (854 px)</option>
+                  </select>
+                </label>
+                <label class="field">Shape
+                  <select id="v-aspect">
+                    <option value="auto">Fit the area</option>
+                    <option value="16:9">16:9 landscape</option>
+                    <option value="1:1">1:1 square</option>
+                    <option value="4:5">4:5 portrait</option>
+                    <option value="9:16">9:16 vertical</option>
+                  </select>
+                </label>
+              </div>
+              <p class="planline" id="v-plan"></p>
+            </div>
+            <div class="group">
+              <h3>Look</h3>
+              <label class="field">Title<input type="text" id="v-title"></label>
+              <label class="field">Subtitle<input type="text" id="v-sub" class="my"></label>
+              <div class="two">
+                <label class="field">Outside the area
+                  <select id="v-outside"><option value="dim">Dim</option><option value="show">Show</option><option value="black">Black</option></select>
+                </label>
+                <label class="field">Transition
+                  <select id="v-fade"><option value="0">Cut</option><option value="4">Crossfade</option></select>
+                </label>
+              </div>
+              <div class="checks">
+                <label class="chk"><input type="checkbox" id="v-year" checked> Year</label>
+                <label class="chk"><input type="checkbox" id="v-era" checked> Sensor era</label>
+                <label class="chk"><input type="checkbox" id="v-qa" checked> Gap-fill badge</label>
+                <label class="chk"><input type="checkbox" id="v-timeline" checked> Timeline</label>
+                <label class="chk"><input type="checkbox" id="v-scale" checked> Scale bar</label>
+                <label class="chk"><input type="checkbox" id="v-north" checked> North arrow</label>
+                <label class="chk"><input type="checkbox" id="v-outline" checked> Area outline</label>
+                <label class="chk"><input type="checkbox" id="v-filter"> Apply display enhancement</label>
+              </div>
+              <p class="note">Attribution is always burned in: CC BY 4.0 requires it.</p>
+              <div class="two">
+                <label class="field">Hold first frame<select id="v-hold0"><option value="0">0 s</option><option value="1" selected>1 s</option><option value="2">2 s</option></select></label>
+                <label class="field">Hold last frame<select id="v-hold1"><option value="0">0 s</option><option value="1">1 s</option><option value="2" selected>2 s</option><option value="3">3 s</option></select></label>
+              </div>
+            </div>
+            <div class="group">
+              <h3>Make</h3>
+              <label class="field">Format
+                <select id="v-format">
+                  <option value="mp4">MP4 (H.264)</option>
+                  <option value="webm">WebM (VP9)</option>
+                  <option value="gif">Animated GIF</option>
+                </select>
+              </label>
+              <div class="btnrow">
+                <button class="btn primary" type="button" id="v-render">Render video</button>
+                <button class="btn" type="button" id="v-cancel" hidden>Cancel</button>
+                <button class="btn" type="button" id="v-quick">Quick preview</button>
+              </div>
+              <div class="progress" id="v-progress" hidden><span></span></div>
+              <p class="note" id="v-status"></p>
+              <div class="videobox" id="v-out" hidden></div>
+            </div>
+            <div class="group">
+              <h3>Stills</h3>
+              <div class="two">
+                <label class="field">Before<select id="ba-a"></select></label>
+                <label class="field">After<select id="ba-b"></select></label>
+              </div>
+              <div class="btnrow">
+                <button class="btn" type="button" id="ba-png">Before / after PNG</button>
+                <button class="btn" type="button" id="fs-png">Filmstrip PNG</button>
+                <button class="btn" type="button" id="yr-tif">GeoTIFF of the year</button>
+              </div>
+              <p class="note" id="st-status"></p>
+            </div>
+          </div>
+        </section>
+
+        <!-- ABOUT -->
+        <section class="tab" id="tab-about" role="tabpanel" hidden>
+          <div id="about"></div>
+        </section>
+      </div>
+    </aside>
+  </main>
+</div>
+<div id="tip" hidden></div>
+<div class="modal" id="modal" hidden><div class="modal-card" role="dialog" aria-modal="true"><button class="iconbtn close" type="button" aria-label="Close" id="modalclose">×</button><div id="modalbody"></div></div></div>
+
+<script src="vendor/leaflet/leaflet.js"></script>
+<script src="vendor/leaflet-geoman-free/leaflet-geoman.min.js"></script>
+<script src="vendor/topojson-client/topojson-client.min.js"></script>
+<script src="vendor/turf/turf.min.js"></script>
+<script src="vendor/proj4/proj4.js"></script>
+<script src="vendor/togeojson/togeojson.umd.js"></script>
+<script src="vendor/jszip/jszip.min.js"></script>
+<script src="vendor/shpjs/shp.min.js"></script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
